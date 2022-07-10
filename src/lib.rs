@@ -3,7 +3,8 @@
 //!
 
 mod fs;
+mod manager;
 mod schema;
 
-pub use crate::manager::PackageJsonManager;
+pub use crate::manager::{PackageJsonManager, PACKAGE_JSON_FILENAME};
 pub use crate::schema::*;

@@ -210,7 +210,7 @@ fn test_package_json() {
   assert_eq!(json.bundled_dependencies, None);
 
   // test default values
-  assert_eq!(json.private, false);
+  assert!(!json.private, "json.private should be false");
   assert_eq!(json.scripts, default::scripts());
   assert_eq!(json.main, default::main());
   assert_eq!(json.r#type, default::r#type());
