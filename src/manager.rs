@@ -111,7 +111,7 @@ impl PackageJsonManager {
     self.read().map(|_| &mut self.json)
   }
 
-  /// Use the current `package.json` contents to write the target `package.json` file.
+  /// Use the current `package.json` content to write the target `package.json` file.
   /// ```
   /// use package_json::PackageJsonManager;
   /// let mut manager = PackageJsonManager::new();
@@ -136,7 +136,7 @@ impl PackageJsonManager {
       })
   }
 
-  /// Write the current `package.json` contents to the specific `package.json` file.
+  /// Write the current `package.json` content to the specific `package.json` file.
   /// ```
   /// use package_json::PackageJsonManager;
   /// use std::path::Path;

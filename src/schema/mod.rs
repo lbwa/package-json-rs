@@ -142,26 +142,6 @@ pub struct PackageJson {
   pub typings: Option<String>,
 
   /// Any unknown fields should be placed in `unknown` field.
-  ///
-  /// - before serialization
-  /// ```
-  /// PackageJson {
-  ///   // ...
-  ///   name: "my-package",
-  ///   unknown: {
-  ///    "foo": "bar",
-  ///    "baz": "qux"
-  ///   }
-  /// }
-  /// ```
-  /// - after serialization
-  /// ```
-  /// {
-  ///   "name": "abc",
-  ///   "foo": "bar",
-  ///   "baz": "qux"
-  /// }
-  /// ```
   #[serde(flatten)]
   pub unknowns: HashMap<String, serde_json::Value>,
 }
