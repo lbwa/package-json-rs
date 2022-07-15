@@ -180,7 +180,7 @@ fn test_new() {
   let file_path = PathBuf::from("/path/to/package.json");
   manager.set_file_path(&file_path);
   assert_eq!(manager.file_path, Some(file_path.to_owned()));
-  assert_eq!(manager.get_file_path(), Some(&file_path as &Path));
+  assert_eq!(manager.get_file_path(), Some(file_path.as_ref()));
   assert_eq!(manager.take_file_path(), Some(file_path.to_owned()));
   assert_eq!(manager.file_path, None);
 }
