@@ -35,14 +35,12 @@ impl PackageJsonManager {
   }
 
   /// Try to locate the closest `package.json` file from [current working directory][std::env::current_dir] to sys root.
-  pub fn locate_closest(&mut self) -> Option<PathBuf> {
-    env::current_dir()
-      .ok()
-      .and_then(|cwd| self.locate_closest_from(cwd))
+  pub fn locate_closest(&mut self) -> Result<PathBuf> {
+    env::current_dir().map(|cwd| self.locate_closest_from(cwd))?
   }
 
   /// Try to locate the closest `package.json` file from specific directory to sys root.
-  pub fn locate_closest_from<P: AsRef<Path>>(&mut self, from: P) -> Option<PathBuf> {
+  pub fn locate_closest_from<P: AsRef<Path>>(&mut self, from: P) -> Result<PathBuf> {
     fs::find_closest_file(PACKAGE_JSON_FILENAME, from).map(|file_path| {
       self.file_path = Some(file_path);
       self.file_path.as_ref().unwrap().to_owned()
@@ -89,7 +87,7 @@ impl PackageJsonManager {
   /// ```
   /// use package_json::PackageJsonManager;
   /// let mut manager = PackageJsonManager::new();
-  /// if manager.locate_closest().is_some() {
+  /// if manager.locate_closest().is_ok() {
   ///   assert!(manager.read_ref().is_ok());
   /// }
   /// ```
@@ -103,7 +101,7 @@ impl PackageJsonManager {
   /// ```
   /// use package_json::PackageJsonManager;
   /// let mut manager = PackageJsonManager::new();
-  /// if manager.locate_closest().is_some() {
+  /// if manager.locate_closest().is_ok() {
   ///   assert!(manager.read_mut().is_ok());
   /// }
   /// ```
@@ -115,7 +113,7 @@ impl PackageJsonManager {
   /// ```
   /// use package_json::PackageJsonManager;
   /// let mut manager = PackageJsonManager::new();
-  /// if manager.locate_closest().is_some() {
+  /// if manager.locate_closest().is_ok() {
   ///   if let Ok(mut json) = manager.read_mut() {
   ///     json.name = "new name".to_string();
   ///     json.version = "1.0.0".to_string();
@@ -141,7 +139,7 @@ impl PackageJsonManager {
   /// use package_json::PackageJsonManager;
   /// use std::path::Path;
   /// let mut manager = PackageJsonManager::new();
-  /// if manager.locate_closest().is_some() {
+  /// if manager.locate_closest().is_ok() {
   ///   if let Ok(mut json) = manager.read_mut() {
   ///     json.name = "new name".to_string();
   ///     json.version = "1.0.0".to_string();
@@ -194,13 +192,13 @@ fn test_readable() {
   use tempfile::tempdir_in;
 
   let mut manager = PackageJsonManager::new();
-  debug_assert!(manager.read_ref().is_err(), "found an available file.");
-  debug_assert!(
+  assert!(manager.read_ref().is_err(), "found an available file.");
+  assert!(
     manager.get_file_path().is_none(),
     "found an available file."
   );
-  debug_assert!(
-    manager.locate_closest().is_none(),
+  assert!(
+    manager.locate_closest().is_err(),
     "found an available file."
   );
 
@@ -226,22 +224,22 @@ fn test_readable() {
     (file_dir, Some(file_path.to_owned())),
     (deeper_file_dir.as_path(), Some(file_path.to_owned())),
   ] {
-    debug_assert_eq!(manager.locate_closest_from(dir), expect);
+    assert_eq!(manager.locate_closest_from(dir).ok(), expect);
     if expect.is_some() {
-      debug_assert!(manager.read_ref().is_ok(), "read file failed.");
-      debug_assert_eq!(manager.get_file_path().map(|p| p.to_path_buf()), expect);
+      assert!(manager.read_ref().is_ok(), "read file failed.");
+      assert_eq!(manager.get_file_path().map(|p| p.to_path_buf()), expect);
 
       if let Ok(json) = manager.read_ref() {
-        debug_assert_eq!(json.name, "test");
-        debug_assert_eq!(json.version, "0.0.1");
+        assert_eq!(json.name, "test");
+        assert_eq!(json.version, "0.0.1");
       }
 
       let handler = manager.as_ref();
-      debug_assert_eq!(handler.name, "test");
-      debug_assert_eq!(handler.version, "0.0.1");
-      debug_assert!(!handler.private);
+      assert_eq!(handler.name, "test");
+      assert_eq!(handler.version, "0.0.1");
+      assert!(!handler.private);
     } else {
-      debug_assert!(manager.read_ref().is_err(), "read field successful.")
+      assert!(manager.read_ref().is_err(), "read field successful.")
     }
   }
 }
@@ -255,7 +253,7 @@ fn test_writable() {
   use tempfile::tempdir_in;
 
   let mut manager = PackageJsonManager::new();
-  debug_assert!(manager.write().is_err(), "found an available file.");
+  assert!(manager.write().is_err(), "found an available file.");
 
   let dir = tempdir_in(current_dir().unwrap()).expect("create temp_dir failed!");
   let file_path = dir.path().join(format!("a/b/c/{}", PACKAGE_JSON_FILENAME));
@@ -277,7 +275,7 @@ fn test_writable() {
   // case `read_mut`
   {
     let file_writer = manager.read_mut();
-    debug_assert!(
+    assert!(
       file_writer.is_ok(),
       "{}",
       format!("create file writer failed: {:?}", file_writer)
@@ -285,11 +283,11 @@ fn test_writable() {
     if let Ok(mut json) = file_writer {
       json.name = "test2".to_string();
       json.version = "0.0.2".to_string();
-      debug_assert!(manager.write().is_ok());
+      assert!(manager.write().is_ok());
     }
     let file_reader = manager.as_ref();
-    debug_assert_eq!(file_reader.name, "test2");
-    debug_assert_eq!(file_reader.version, "0.0.2");
+    assert_eq!(file_reader.name, "test2");
+    assert_eq!(file_reader.version, "0.0.2");
   }
 
   // case `as_mut`
@@ -298,7 +296,7 @@ fn test_writable() {
     mutable_handler.name = "test3".to_string();
     mutable_handler.version = "0.0.3".to_string();
     let file_reader = manager.as_ref();
-    debug_assert_eq!(file_reader.name, "test3");
-    debug_assert_eq!(file_reader.version, "0.0.3");
+    assert_eq!(file_reader.name, "test3");
+    assert_eq!(file_reader.version, "0.0.3");
   }
 }

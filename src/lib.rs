@@ -3,14 +3,19 @@
 //!
 //! ## How to locate the closest `package.json` file
 //!
-//! ```ignore
+//! ```no_run
 //! use package_json::PackageJsonManager;
 //! use std::path::Path;
+//!
+//! # use anyhow::Result;
+//! # fn main() -> Result<()> {
 //! let mut manager = PackageJsonManager::new();
 //! // based on the current working directory
-//! assert!(manager.locate_closest().is_some());
+//! manager.locate_closest()?;
 //! // based on the given path
-//! assert!(manager.locate_closest_from(&Path::new("/path/to/dir")).is_some());
+//! manager.locate_closest_from(&Path::new("/path/to/working_dir"))?;
+//! # Ok(())
+//! # }
 //! ```
 //!
 //! Use [`with_file_path`][PackageJsonManager::with_file_path] to create a [`PackageJsonManager`][PackageJsonManager] instance with the give file path.
@@ -30,7 +35,7 @@
 //! ```
 //! use package_json::PackageJsonManager;
 //! let mut manager = PackageJsonManager::new();
-//! if manager.locate_closest().is_some() {
+//! if manager.locate_closest().is_ok() {
 //!   assert!(manager.read_mut().is_ok());
 //!   assert!(manager.read_ref().is_ok());
 //! }
@@ -38,16 +43,22 @@
 //!
 //! On the other hand, we should use [`as_mut`][PackageJsonManager::as_mut] and [`as_ref`][PackageJsonManager::as_ref] to get a mutable reference or a immutable reference if we have read it before.
 //! ```
-//! use package_json::PackageJsonManager;
-//! let mut manager = PackageJsonManager::new();
-//! if manager.locate_closest().is_some() {
-//!   // manager.as_mut();
-//!   // manager.as_ref();
-//! }
+//! # use package_json::PackageJsonManager;
+//! # let mut manager = PackageJsonManager::new();
+//! # if manager.locate_closest().is_ok() {
+//! manager.as_mut(); // or manager.as_ref();
+//! # }
 //! ```
 //! Use [`write`][PackageJsonManager::write] to write the current `package.json` file to the disk. If we want to change the output path, eg. create a new `package.json`, we should use [`write_to`][PackageJsonManager::write_to] instead.
-//! ```ignore
+//! ```no_run
+//! use package_json::PackageJsonManager;
+//! use std::path::Path;
+//!
+//! # fn main() {
+//! let mut manager = PackageJsonManager::new();
 //! assert!(manager.write().is_ok());
+//! assert!(manager.write_to(&Path::new("/path/to/package.json")).is_ok());
+//! # }
 //! ```
 //!
 

@@ -3,15 +3,19 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-pub fn find_closest_file<P: AsRef<Path>>(filename: &str, current_dir: P) -> Option<PathBuf> {
+pub fn find_closest_file<P: AsRef<Path>>(filename: &str, current_dir: P) -> Result<PathBuf> {
   let mut current_dir = PathBuf::from(current_dir.as_ref());
   loop {
     let file_path = current_dir.join(filename);
     if file_path.exists() {
-      return Some(file_path);
+      return Ok(file_path);
     }
     if !current_dir.pop() {
-      return None;
+      return Err(format_err!(
+        "Couldn't find an available \"{}\" from {}.",
+        filename,
+        current_dir.display()
+      ));
     }
   }
 }
@@ -91,8 +95,8 @@ fn test_find_closest_file() {
     // the children dir of file_path
     (deeper_dir, Some(file_path.to_owned())),
   ] {
-    debug_assert_eq!(
-      find_closest_file(PACKAGE_JSON_FILENAME, dir),
+    assert_eq!(
+      find_closest_file(PACKAGE_JSON_FILENAME, dir).ok(),
       expect,
       "find_closest_file failed!"
     );
@@ -138,11 +142,11 @@ fn test_write_json() {
   };
 
   write_json(&file_path, test_json).expect("write json failed");
-  debug_assert!(file_path.exists());
+  assert!(file_path.exists());
   let mut file = File::open(&file_path).expect("open file failed!");
   let mut content = String::new();
   file
     .read_to_string(&mut content)
     .expect("read file failed!");
-  debug_assert_eq!(content, r#"{"name":"test"}"#);
+  assert_eq!(content, r#"{"name":"test"}"#);
 }
