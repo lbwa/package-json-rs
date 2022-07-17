@@ -9,6 +9,7 @@ categories = ["data-structures", "encoding", "api-bindings"]
 repository = "https://github.com/lbwa/package-json-rs"
 license = "MIT"
 readme = "README.md"
+exclude = [".*/"]
 
 [package.metadata.docs.rs]
 all-features = true
