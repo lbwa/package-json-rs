@@ -11,6 +11,11 @@ package-json = "0.1.0"
 
 You may be looking for [online documentation](https://docs.rs/package-json/latest/package_json/).
 
+## Features
+
+- ✅ Use `PackageJsonManager` to read and write `package.json`
+- ✅ Find `package.json` from the current working directory or specific path
+
 ## License
 
 [MIT](./LICENSE) © [Liu Bowen](https://github.com/lbwa)
