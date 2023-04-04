@@ -1,5 +1,5 @@
 use crate::fs;
-use crate::write::WriteOpt;
+use crate::write::WriteOpts;
 use crate::PackageJson;
 use anyhow::{format_err, Result};
 use std::env;
@@ -148,7 +148,7 @@ impl PackageJsonManager {
   ///   manager.write().expect("Couldn't write package.json");
   /// }
   /// ```
-  pub fn write_with_opts(&mut self, opts: WriteOpt) -> Result<()> {
+  pub fn write_with_opts(&mut self, opts: WriteOpts) -> Result<()> {
     self
       .file_path
       .as_ref()
@@ -196,7 +196,7 @@ impl PackageJsonManager {
   ///     .expect("Couldn't write package.json");
   /// }
   /// ```
-  pub fn write_to_with_opts(&mut self, file_path: &Path, opts: WriteOpt) -> Result<()> {
+  pub fn write_to_with_opts(&mut self, file_path: &Path, opts: WriteOpts) -> Result<()> {
     fs::write_json(file_path, &self.json, Some(opts))
   }
 }

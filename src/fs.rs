@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use crate::write::WriteOpt;
+use crate::write::WriteOpts;
 
 pub fn find_closest_file<P: AsRef<Path>>(filename: &str, current_dir: P) -> Result<PathBuf> {
   let mut current_dir = PathBuf::from(current_dir.as_ref());
@@ -41,7 +41,7 @@ where
 pub fn write_json<Json, FilePath>(
   file_path: FilePath,
   json: Json,
-  opts: Option<WriteOpt>,
+  opts: Option<WriteOpts>,
 ) -> Result<()>
 where
   Json: serde::Serialize,

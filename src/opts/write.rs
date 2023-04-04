@@ -1,4 +1,4 @@
 #[derive(Debug, Default)]
-pub struct WriteOpt {
+pub struct WriteOpts {
   pub pretty: bool,
 }
