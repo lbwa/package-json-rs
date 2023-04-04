@@ -164,3 +164,35 @@ fn test_write_json() {
     .expect("read file failed!");
   assert_eq!(content, r#"{"name":"test"}"#);
 }
+
+#[test]
+fn test_write_json_with_opts() {
+  use serde::Serialize;
+  use std::env::current_dir;
+  use tempfile::tempdir_in;
+
+  let dir = tempdir_in(current_dir().unwrap()).expect("create temp_dir failed!");
+  let file_path = dir.path().join("test.json");
+  #[derive(Serialize, Debug)]
+  struct TestJson {
+    name: String,
+  }
+
+  let test_json = TestJson {
+    name: "test".to_string(),
+  };
+
+  write_json(&file_path, test_json, Some(WriteOpts { pretty: true })).expect("write json failed");
+  assert!(file_path.exists());
+  let mut file = File::open(&file_path).expect("open file failed!");
+  let mut content = String::new();
+  file
+    .read_to_string(&mut content)
+    .expect("read file failed!");
+  assert_eq!(
+    content,
+    r#"{
+  "name": "test"
+}"#
+  );
+}
