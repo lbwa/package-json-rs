@@ -3,6 +3,8 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
+use crate::write::WriteOpts;
+
 pub fn find_closest_file<P: AsRef<Path>>(filename: &str, current_dir: P) -> Result<PathBuf> {
   let mut current_dir = PathBuf::from(current_dir.as_ref());
   loop {
@@ -36,12 +38,24 @@ where
   }
 }
 
-pub fn write_json<Json, FilePath>(file_path: FilePath, json: Json) -> Result<()>
+pub fn write_json<Json, FilePath>(
+  file_path: FilePath,
+  json: Json,
+  opts: Option<WriteOpts>,
+) -> Result<()>
 where
   Json: serde::Serialize,
   FilePath: AsRef<Path>,
 {
-  match serde_json::to_string(&json) {
+  let opts = opts.unwrap_or_default();
+
+  let json = if opts.pretty {
+    serde_json::to_string_pretty(&json)
+  } else {
+    serde_json::to_string(&json)
+  };
+
+  match json {
     Ok(json) => {
       File::create(file_path)?.write_all(json.as_bytes())?;
       Ok(())
@@ -141,7 +155,7 @@ fn test_write_json() {
     name: "test".to_string(),
   };
 
-  write_json(&file_path, test_json).expect("write json failed");
+  write_json(&file_path, test_json, None).expect("write json failed");
   assert!(file_path.exists());
   let mut file = File::open(&file_path).expect("open file failed!");
   let mut content = String::new();
@@ -149,4 +163,36 @@ fn test_write_json() {
     .read_to_string(&mut content)
     .expect("read file failed!");
   assert_eq!(content, r#"{"name":"test"}"#);
+}
+
+#[test]
+fn test_write_json_with_opts() {
+  use serde::Serialize;
+  use std::env::current_dir;
+  use tempfile::tempdir_in;
+
+  let dir = tempdir_in(current_dir().unwrap()).expect("create temp_dir failed!");
+  let file_path = dir.path().join("test.json");
+  #[derive(Serialize, Debug)]
+  struct TestJson {
+    name: String,
+  }
+
+  let test_json = TestJson {
+    name: "test".to_string(),
+  };
+
+  write_json(&file_path, test_json, Some(WriteOpts { pretty: true })).expect("write json failed");
+  assert!(file_path.exists());
+  let mut file = File::open(&file_path).expect("open file failed!");
+  let mut content = String::new();
+  file
+    .read_to_string(&mut content)
+    .expect("read file failed!");
+  assert_eq!(
+    content,
+    r#"{
+  "name": "test"
+}"#
+  );
 }

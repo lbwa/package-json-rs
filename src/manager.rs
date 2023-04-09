@@ -1,4 +1,5 @@
 use crate::fs;
+use crate::write::WriteOpts;
 use crate::PackageJson;
 use anyhow::{format_err, Result};
 use std::env;
@@ -125,7 +126,33 @@ impl PackageJsonManager {
     self
       .file_path
       .as_ref()
-      .map(|file_path| fs::write_json(file_path, &self.json))
+      .map(|file_path| fs::write_json(file_path, &self.json, None))
+      .unwrap_or_else(|| {
+        Err(format_err!(
+          "Couldn't find an available {} file.",
+          PACKAGE_JSON_FILENAME
+        ))
+      })
+  }
+
+  /// Use the current `package.json` content to write the target `package.json` file,
+  /// with write options.
+  /// ```
+  /// use package_json::PackageJsonManager;
+  /// let mut manager = PackageJsonManager::new();
+  /// if manager.locate_closest().is_ok() {
+  ///   if let Ok(mut json) = manager.read_mut() {
+  ///     json.name = "new name".to_string();
+  ///     json.version = "1.0.0".to_string();
+  ///   }
+  ///   manager.write().expect("Couldn't write package.json");
+  /// }
+  /// ```
+  pub fn write_with_opts(&mut self, opts: WriteOpts) -> Result<()> {
+    self
+      .file_path
+      .as_ref()
+      .map(|file_path| fs::write_json(file_path, &self.json, Some(opts)))
       .unwrap_or_else(|| {
         Err(format_err!(
           "Couldn't find an available {} file.",
@@ -150,7 +177,27 @@ impl PackageJsonManager {
   /// }
   /// ```
   pub fn write_to(&mut self, file_path: &Path) -> Result<()> {
-    fs::write_json(file_path, &self.json)
+    fs::write_json(file_path, &self.json, None)
+  }
+
+  /// Write the current `package.json` content to the specific `package.json` file,
+  /// with write options.
+  /// ```
+  /// use package_json::PackageJsonManager;
+  /// use std::path::Path;
+  /// let mut manager = PackageJsonManager::new();
+  /// if manager.locate_closest().is_ok() {
+  ///   if let Ok(mut json) = manager.read_mut() {
+  ///     json.name = "new name".to_string();
+  ///     json.version = "1.0.0".to_string();
+  ///   }
+  ///   manager
+  ///     .write_to(&Path::new("/path/to/package.json"))
+  ///     .expect("Couldn't write package.json");
+  /// }
+  /// ```
+  pub fn write_to_with_opts(&mut self, file_path: &Path, opts: WriteOpts) -> Result<()> {
+    fs::write_json(file_path, &self.json, Some(opts))
   }
 }
 
