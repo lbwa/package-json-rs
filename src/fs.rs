@@ -3,7 +3,9 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
 
-use crate::write::WriteOpts;
+use self::write_options::WriteOptions;
+
+pub(crate) mod write_options;
 
 pub fn find_closest_file<P: AsRef<Path>>(filename: &str, current_dir: P) -> Result<PathBuf> {
   let mut current_dir = PathBuf::from(current_dir.as_ref());
@@ -41,23 +43,21 @@ where
 pub fn write_json<Json, FilePath>(
   file_path: FilePath,
   json: Json,
-  opts: Option<WriteOpts>,
+  write_options: &WriteOptions,
 ) -> Result<()>
 where
   Json: serde::Serialize,
   FilePath: AsRef<Path>,
 {
-  let opts = opts.unwrap_or_default();
-
-  let json = if opts.pretty {
+  let package_json = if write_options.pretty {
     serde_json::to_string_pretty(&json)
   } else {
     serde_json::to_string(&json)
   };
 
-  match json {
-    Ok(json) => {
-      File::create(file_path)?.write_all(json.as_bytes())?;
+  match package_json {
+    Ok(json_content) => {
+      File::create(file_path)?.write_all(json_content.as_bytes())?;
       Ok(())
     }
     Err(error) => Err(format_err!(error)),
@@ -140,13 +140,14 @@ fn test_read_json() {
 
 #[test]
 fn test_write_json() {
+  use self::write_options::WriteOptionsBuilder;
   use serde::Serialize;
   use std::env::current_dir;
   use tempfile::tempdir_in;
 
   let dir = tempdir_in(current_dir().unwrap()).expect("create temp_dir failed!");
   let file_path = dir.path().join("test.json");
-  #[derive(Serialize, Debug)]
+  #[derive(Serialize, Debug, Clone)]
   struct TestJson {
     name: String,
   }
@@ -155,44 +156,33 @@ fn test_write_json() {
     name: "test".to_string(),
   };
 
-  write_json(&file_path, test_json, None).expect("write json failed");
-  assert!(file_path.exists());
-  let mut file = File::open(&file_path).expect("open file failed!");
-  let mut content = String::new();
-  file
-    .read_to_string(&mut content)
-    .expect("read file failed!");
-  assert_eq!(content, r#"{"name":"test"}"#);
-}
-
-#[test]
-fn test_write_json_with_opts() {
-  use serde::Serialize;
-  use std::env::current_dir;
-  use tempfile::tempdir_in;
-
-  let dir = tempdir_in(current_dir().unwrap()).expect("create temp_dir failed!");
-  let file_path = dir.path().join("test.json");
-  #[derive(Serialize, Debug)]
-  struct TestJson {
-    name: String,
-  }
-
-  let test_json = TestJson {
-    name: "test".to_string(),
-  };
-
-  write_json(&file_path, test_json, Some(WriteOpts { pretty: true })).expect("write json failed");
-  assert!(file_path.exists());
-  let mut file = File::open(&file_path).expect("open file failed!");
-  let mut content = String::new();
-  file
-    .read_to_string(&mut content)
-    .expect("read file failed!");
-  assert_eq!(
-    content,
-    r#"{
+  [
+    (
+      WriteOptionsBuilder::default()
+        .pretty(false)
+        .build()
+        .expect("build WriteOptions failed!"),
+      r#"{"name":"test"}"#,
+    ),
+    (
+      WriteOptionsBuilder::default()
+        .build()
+        .expect("build WriteOptions failed!"),
+      r#"{
   "name": "test"
-}"#
-  );
+}"#,
+    ),
+  ]
+  .iter()
+  .for_each(|(options, expect)| {
+    write_json(&file_path, test_json.clone(), options).expect("write json failed");
+    assert!(file_path.exists());
+    let mut file = File::open(&file_path).expect("open file failed!");
+    let mut content = String::new();
+    file
+      .read_to_string(&mut content)
+      .expect("read file failed!");
+
+    assert_eq!(content, expect.to_string(), "write_json failed!");
+  })
 }

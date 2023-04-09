@@ -64,7 +64,7 @@ pub struct PackageJson {
   pub bin: Option<PackageBin>,
   /// Specify either a single file or an array of filenames to put in place for the man program to find.
   ///
-  /// If only a single file is provided, then it's installed such that it is the result from man <pkgname>, regardless of its actual filename.
+  /// If only a single file is provided, then it's installed such that it is the result from `man <pkgname>`, regardless of its actual filename.
   #[serde(skip_serializing_if = "Option::is_none")]
   pub man: Option<PackageMan>,
   /// [The CommonJS Packages spec](http://wiki.commonjs.org/wiki/Packages/1.0) details a few ways that you can indicate the structure of your package using a directories object. If you look at npm's package.json, you'll see that it has directories for doc, lib, and man.
