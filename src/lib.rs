@@ -66,9 +66,6 @@ mod fs;
 mod manager;
 mod schema;
 
-mod opts;
-
+pub use crate::fs::write_options::{WriteOptions, WriteOptionsBuilder};
 pub use crate::manager::{PackageJsonManager, PACKAGE_JSON_FILENAME};
 pub use crate::schema::*;
-
-pub use opts::*;

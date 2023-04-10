@@ -1,5 +1,5 @@
 use crate::fs;
-use crate::write::WriteOpts;
+use crate::fs::write_options::WriteOptions;
 use crate::PackageJson;
 use anyhow::{format_err, Result};
 use std::env;
@@ -8,10 +8,21 @@ use std::path::{Path, PathBuf};
 pub const PACKAGE_JSON_FILENAME: &str = "package.json";
 
 /// A manager for manipulating `package.json` file.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct PackageJsonManager {
   file_path: Option<PathBuf>,
   json: PackageJson,
+  write_options: Option<WriteOptions>,
+}
+
+impl Default for PackageJsonManager {
+  fn default() -> Self {
+    Self {
+      file_path: None,
+      json: Default::default(),
+      write_options: Some(WriteOptions::default()),
+    }
+  }
 }
 
 impl PackageJsonManager {
@@ -24,14 +35,30 @@ impl PackageJsonManager {
   /// ```
   /// use package_json::PackageJsonManager;
   /// let mut manager = PackageJsonManager::with_file_path("/path/to/package.json");
-  ///
+  /// ```
   pub fn with_file_path<FilePath>(path: FilePath) -> Self
   where
     FilePath: AsRef<Path>,
   {
     Self {
       file_path: Some(path.as_ref().to_path_buf()),
-      json: PackageJson::default(),
+      ..Default::default()
+    }
+  }
+
+  /// Construct a new, empty `PackageJsonManager` with the specified `WriteOptions`.
+  /// ```
+  /// use package_json::{PackageJsonManager, WriteOptions, WriteOptionsBuilder};
+  /// let mut manager = PackageJsonManager::with_write_options(WriteOptions::default());
+  ///
+  /// let mut manager = PackageJsonManager::with_write_options(
+  ///   WriteOptionsBuilder::default().pretty(false).build().unwrap()
+  /// );
+  /// ```
+  pub fn with_write_options(options: WriteOptions) -> Self {
+    Self {
+      write_options: Some(options),
+      ..Default::default()
     }
   }
 
@@ -126,33 +153,16 @@ impl PackageJsonManager {
     self
       .file_path
       .as_ref()
-      .map(|file_path| fs::write_json(file_path, &self.json, None))
-      .unwrap_or_else(|| {
-        Err(format_err!(
-          "Couldn't find an available {} file.",
-          PACKAGE_JSON_FILENAME
-        ))
+      .map(|file_path| {
+        fs::write_json(
+          file_path,
+          &self.json,
+          self
+            .write_options
+            .as_ref()
+            .expect("self.write_options should not be None"),
+        )
       })
-  }
-
-  /// Use the current `package.json` content to write the target `package.json` file,
-  /// with write options.
-  /// ```
-  /// use package_json::PackageJsonManager;
-  /// let mut manager = PackageJsonManager::new();
-  /// if manager.locate_closest().is_ok() {
-  ///   if let Ok(mut json) = manager.read_mut() {
-  ///     json.name = "new name".to_string();
-  ///     json.version = "1.0.0".to_string();
-  ///   }
-  ///   manager.write().expect("Couldn't write package.json");
-  /// }
-  /// ```
-  pub fn write_with_opts(&mut self, opts: WriteOpts) -> Result<()> {
-    self
-      .file_path
-      .as_ref()
-      .map(|file_path| fs::write_json(file_path, &self.json, Some(opts)))
       .unwrap_or_else(|| {
         Err(format_err!(
           "Couldn't find an available {} file.",
@@ -177,27 +187,14 @@ impl PackageJsonManager {
   /// }
   /// ```
   pub fn write_to(&mut self, file_path: &Path) -> Result<()> {
-    fs::write_json(file_path, &self.json, None)
-  }
-
-  /// Write the current `package.json` content to the specific `package.json` file,
-  /// with write options.
-  /// ```
-  /// use package_json::PackageJsonManager;
-  /// use std::path::Path;
-  /// let mut manager = PackageJsonManager::new();
-  /// if manager.locate_closest().is_ok() {
-  ///   if let Ok(mut json) = manager.read_mut() {
-  ///     json.name = "new name".to_string();
-  ///     json.version = "1.0.0".to_string();
-  ///   }
-  ///   manager
-  ///     .write_to(&Path::new("/path/to/package.json"))
-  ///     .expect("Couldn't write package.json");
-  /// }
-  /// ```
-  pub fn write_to_with_opts(&mut self, file_path: &Path, opts: WriteOpts) -> Result<()> {
-    fs::write_json(file_path, &self.json, Some(opts))
+    fs::write_json(
+      file_path,
+      &self.json,
+      self
+        .write_options
+        .as_ref()
+        .expect("self.write_options should not be None"),
+    )
   }
 }
 
