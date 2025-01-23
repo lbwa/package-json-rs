@@ -148,6 +148,7 @@ pub struct PackageJson {
 
 /// see [PackageJson::bugs](PackageJson::bugs)
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackageBugs {
   Url(String),
   Record(PackageBugsRecord),
@@ -161,6 +162,7 @@ pub struct PackageBugsRecord {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackagePeople {
   Literal(String),
   Record(PackagePeopleRecord),
@@ -175,6 +177,7 @@ pub struct PackagePeopleRecord {
 
 /// see [PackageJson::funding](PackageJson::funding)
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackageFunding {
   Url(String),
   Record(PackageFundingRecord),
@@ -190,6 +193,7 @@ pub struct PackageFundingRecord {
 
 /// see [PackageJson::bin](PackageJson::bin)
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackageBin {
   Literal(String),
   Record(HashMap<String, String>),
@@ -197,6 +201,7 @@ pub enum PackageBin {
 
 /// see [PackageJson::man](PackageJson::man)
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackageMan {
   Literal(String),
   Slice(Vec<String>),
@@ -356,4 +361,21 @@ fn test_repository_record_with_directory() {
       panic!("expected a repository struct, got a url")
     }
   }
+}
+
+#[test]
+fn test_author_serialization() {
+  let json = r#"
+ {
+	"name": "package-name",
+	"private": true,
+	"version": "1.0.0",
+	"description": "Something for everyone",
+	"author": "A string value",
+	"license": "Apache-2.0",
+	"workspaces": [
+		"packages/*"
+	]
+}"#;
+  let _package_json = serde_json::from_str::<PackageJson>(json).unwrap();
 }
