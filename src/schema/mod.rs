@@ -210,10 +210,18 @@ pub struct PackageDirectories {
 }
 
 /// see [PackageJson::repository](PackageJson::repository)
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum PackageRepository {
+  Url(String),
+  Record(PackageRepositoryRecord),
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct PackageRepository {
+pub struct PackageRepositoryRecord {
   pub r#type: String,
   pub url: String,
+  pub directory: Option<String>,
 }
 
 pub type PackageDependencies = HashMap<String, String>;
@@ -269,4 +277,83 @@ fn test_unknown_fields() {
   assert!(package_json.unknowns.get("baz").is_some());
   assert_eq!(package_json.unknowns.get("foo").unwrap(), &"bar".to_owned());
   assert_eq!(package_json.unknowns.get("baz").unwrap(), &"qux".to_owned());
+}
+
+#[test]
+fn test_repository_string() {
+  let json = r#"
+  {
+    "name": "test",
+    "version": "1.0.0",
+    "description": "test",
+    "repository": "gitlab:user/repo"
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("gitlab:user/repo");
+  match package_json.repository.unwrap() {
+    PackageRepository::Url(url) => {
+      assert_eq!(url, expected, "expected {} got {}", expected, url);
+    }
+    PackageRepository::Record(_) => {
+      panic!("expected a repository url, got a struct")
+    }
+  }
+}
+
+#[test]
+fn test_repository_record() {
+  let json = r#"
+  {
+    "name": "test",
+    "version": "1.0.0",
+    "description": "test",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/npm/cli.git"
+      }
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("git+https://github.com/npm/cli.git");
+  match package_json.repository.unwrap() {
+    PackageRepository::Record(record) => {
+      assert_eq!(
+        record.url, expected,
+        "expected repository url {} got {}",
+        expected, record.url
+      );
+    }
+    PackageRepository::Url(_) => {
+      panic!("expected a repository structl, got a url")
+    }
+  }
+}
+
+#[test]
+fn test_repository_record_with_directory() {
+  let json = r#"
+  {
+    "name": "test",
+    "version": "1.0.0",
+    "description": "test",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/npm/cli.git",
+      "directory": "workspaces/libnpmpublish"
+    }
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("workspaces/libnpmpublish");
+  match package_json.repository.unwrap() {
+    PackageRepository::Record(record) => {
+      let dir = record.directory.unwrap();
+      assert_eq!(
+        dir, expected,
+        "expected repository directory {} got {}",
+        expected, dir
+      );
+    }
+    PackageRepository::Url(_) => {
+      panic!("expected a repository struct, got a url")
+    }
+  }
 }
