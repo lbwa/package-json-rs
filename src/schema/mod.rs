@@ -364,7 +364,7 @@ fn test_repository_record_with_directory() {
 }
 
 #[test]
-fn test_author_serialization() {
+fn test_author_string_serialization() {
   let json = r#"
  {
 	"name": "package-name",
@@ -377,5 +377,49 @@ fn test_author_serialization() {
 		"packages/*"
 	]
 }"#;
-  let _package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("A string value");
+  match package_json.author.unwrap() {
+    PackagePeople::Record(_) => {
+      panic!("expected a auhor string, got a struct");
+    }
+    PackagePeople::Literal(literal) => {
+      assert_eq!(literal, expected, "expected {} got {}", expected, literal);
+    }
+  }
+}
+
+#[test]
+fn test_author_object_serialization() {
+  let json = r#"
+ {
+	"name": "package-name",
+	"private": true,
+	"version": "1.0.0",
+	"description": "Something for everyone",
+	"author": {
+    "name": "Barney Rubble",
+    "email": "b@rubble.com",
+    "url": "http://barnyrubble.tumblr.com/"
+  },
+	"license": "Apache-2.0",
+	"workspaces": [
+		"packages/*"
+	]
+}"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("http://barnyrubble.tumblr.com/");
+  match package_json.author.unwrap() {
+    PackagePeople::Record(record) => {
+      let author_url = record.url.unwrap();
+      assert_eq!(
+        author_url, expected,
+        "expected author url: {} got: {}",
+        expected, author_url
+      );
+    }
+    PackagePeople::Literal(_) => {
+      panic!("expected a auhor struct, got a string")
+    }
+  }
 }
