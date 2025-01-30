@@ -324,7 +324,7 @@ fn test_writable() {
       "{}",
       format!("create file writer failed: {:?}", file_writer)
     );
-    if let Ok(mut json) = file_writer {
+    if let Ok(json) = file_writer {
       json.name = "test2".to_string();
       json.version = "0.0.2".to_string();
       assert!(manager.write().is_ok());
@@ -336,7 +336,7 @@ fn test_writable() {
 
   // case `as_mut`
   {
-    let mut mutable_handler = manager.as_mut();
+    let mutable_handler = manager.as_mut();
     mutable_handler.name = "test3".to_string();
     mutable_handler.version = "0.0.3".to_string();
     let file_reader = manager.as_ref();
