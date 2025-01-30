@@ -79,7 +79,7 @@ pub struct PackageJson {
   pub scripts: HashMap<String, String>,
   /// A [config](https://docs.npmjs.com/cli/v8/configuring-npm/package-json#config) object can be used to set configuration parameters used in package scripts that persist across upgrades.
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub config: Option<HashMap<String, String>>,
+  pub config: Option<HashMap<String, serde_json::Value>>,
   /// [Dependencies](https://docs.npmjs.com/cli/v8/configuring-npm/package-json#dependencies) are specified in a simple object that maps a package name to a version range. The version range is a string which has one or more space-separated descriptors. Dependencies can also be identified with a tarball or git URL.
   ///
   /// Please do not put test harnesses or transpilers or other "development" time tools in your dependencies object. See [devDependencies](PackageJson::dev_dependencies).
@@ -278,8 +278,8 @@ fn test_unknown_fields() {
 
   let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
   assert_eq!(package_json.unknowns.len(), 2);
-  assert!(package_json.unknowns.get("foo").is_some());
-  assert!(package_json.unknowns.get("baz").is_some());
+  assert!(package_json.unknowns.contains_key("baz"));
+  assert!(package_json.unknowns.contains_key("baz"));
   assert_eq!(package_json.unknowns.get("foo").unwrap(), &"bar".to_owned());
   assert_eq!(package_json.unknowns.get("baz").unwrap(), &"qux".to_owned());
 }
@@ -422,4 +422,67 @@ fn test_author_object_serialization() {
       panic!("expected a auhor struct, got a string")
     }
   }
+}
+
+#[test]
+fn test_config_with_bool_serialization() {
+  let json = r#"
+   {
+    "name": "package-name",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Something for everyone",
+    "author": {
+      "name": "Barney Rubble",
+      "email": "b@rubble.com",
+      "url": "http://barnyrubble.tumblr.com/"
+    },
+    "config": {
+      "foo": true
+    },
+    "license": "Apache-2.0",
+    "workspaces": [
+      "packages/*"
+    ]
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected: bool = true;
+  assert_eq!(package_json.config.unwrap().get("foo").unwrap(), &expected);
+}
+
+#[test]
+fn test_config_with_nested_serialization() {
+  let json = r#"
+   {
+    "name": "package-name",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Something for everyone",
+    "author": {
+      "name": "Barney Rubble",
+      "email": "b@rubble.com",
+      "url": "http://barnyrubble.tumblr.com/"
+    },
+    "config": {
+      "commitizen": {
+        "path": "cz-conventional-changelog"
+      }
+    },
+    "license": "Apache-2.0",
+    "workspaces": [
+      "packages/*"
+    ]
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected: String = String::from("cz-conventional-changelog");
+  assert_eq!(
+    package_json
+      .config
+      .unwrap()
+      .get("commitizen")
+      .unwrap()
+      .get("path")
+      .unwrap(),
+    &expected
+  );
 }
