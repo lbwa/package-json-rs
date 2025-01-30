@@ -486,3 +486,139 @@ fn test_config_with_nested_serialization() {
     &expected
   );
 }
+
+#[test]
+fn test_scripts_serialization() {
+  let json = r#"
+    {
+        "name": "my-project",
+        "version": "1.0.0",
+        "scripts": {
+            "start": "node index.js",
+            "test": "jest",
+            "build": "webpack --mode production",
+            "lint": "eslint ."
+        }
+    }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  assert_eq!(package_json.scripts.get("start").unwrap(), "node index.js");
+  assert_eq!(package_json.scripts.get("test").unwrap(), "jest");
+  assert_eq!(
+    package_json.scripts.get("build").unwrap(),
+    "webpack --mode production"
+  );
+  assert_eq!(package_json.scripts.get("lint").unwrap(), "eslint .");
+}
+
+#[test]
+fn test_dependencies_and_dev_dependencies() {
+  let json = r#"
+    {
+        "name": "my-library",
+        "version": "2.1.0",
+        "dependencies": {
+            "lodash": "^4.17.21",
+            "axios": "^0.21.1"
+        },
+        "devDependencies": {
+            "jest": "^27.0.6",
+            "typescript": "^4.3.5"
+        }
+    }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  assert_eq!(
+    package_json
+      .dependencies
+      .as_ref()
+      .unwrap()
+      .get("lodash")
+      .unwrap(),
+    "^4.17.21"
+  );
+  assert_eq!(
+    package_json
+      .dependencies
+      .as_ref()
+      .unwrap()
+      .get("axios")
+      .unwrap(),
+    "^0.21.1"
+  );
+  assert_eq!(
+    package_json
+      .dev_dependencies
+      .as_ref()
+      .unwrap()
+      .get("jest")
+      .unwrap(),
+    "^27.0.6"
+  );
+  assert_eq!(
+    package_json
+      .dev_dependencies
+      .as_ref()
+      .unwrap()
+      .get("typescript")
+      .unwrap(),
+    "^4.3.5"
+  );
+}
+
+#[test]
+fn test_engines_and_os() {
+  let json = r#"
+    {
+        "name": "node-specific-package",
+        "version": "1.2.3",
+        "engines": {
+            "node": ">=14.0.0",
+            "npm": ">=6.0.0"
+        },
+        "os": ["darwin", "linux"]
+    }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  assert_eq!(
+    package_json.engines.as_ref().unwrap().get("node").unwrap(),
+    ">=14.0.0"
+  );
+  assert_eq!(
+    package_json.engines.as_ref().unwrap().get("npm").unwrap(),
+    ">=6.0.0"
+  );
+  assert_eq!(
+    package_json.os.as_ref().unwrap(),
+    &vec!["darwin".to_string(), "linux".to_string()]
+  );
+}
+
+#[test]
+fn test_bin_and_man() {
+  let json = r#"
+    {
+        "name": "cli-tool",
+        "version": "3.0.1",
+        "bin": {
+            "my-cli": "./bin/cli.js"
+        },
+        "man": [
+            "./man/doc.1",
+            "./man/doc.2"
+        ]
+    }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  match &package_json.bin {
+    Some(PackageBin::Record(bin_map)) => {
+      assert_eq!(bin_map.get("my-cli").unwrap(), "./bin/cli.js");
+    }
+    _ => panic!("Expected bin to be a Record"),
+  }
+  match &package_json.man {
+    Some(PackageMan::Slice(man_vec)) => {
+      assert_eq!(
+        man_vec,
+        &vec!["./man/doc.1".to_string(), "./man/doc.2".to_string()]
+      );
+    }
+    _ => panic!("Expected man to be a Slice"),
+  }
+}
