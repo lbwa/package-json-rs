@@ -157,8 +157,8 @@ pub enum PackageBugs {
 /// see [PackageJson::bugs](PackageJson::bugs)
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct PackageBugsRecord {
-  pub url: String,
-  pub email: String,
+  pub url: Option<String>,
+  pub email: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -485,6 +485,36 @@ fn test_config_with_nested_serialization() {
       .unwrap(),
     &expected
   );
+}
+
+#[test]
+fn test_bugs_with_nested_serialization() {
+  let json = r#"
+   {
+    "name": "package-name",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Something for everyone",
+    "author": {
+      "name": "Barney Rubble",
+      "email": "b@rubble.com",
+      "url": "http://barnyrubble.tumblr.com/"
+    },
+    "bugs": {
+      "url": "https://github.com/jquery/esprima/issues"
+    }
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected: String = String::from("https://github.com/jquery/esprima/issues");
+  match package_json.bugs.unwrap() {
+    PackageBugs::Url(_url) => {
+      panic!("expected a repository url, got a struct")
+    }
+    PackageBugs::Record(record) => {
+      let url = record.url.unwrap();
+      assert_eq!(url, expected, "expected {} got {}", expected, url);
+    }
+  }
 }
 
 #[test]
