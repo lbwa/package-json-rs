@@ -79,7 +79,7 @@ pub struct PackageJson {
   pub scripts: HashMap<String, String>,
   /// A [config](https://docs.npmjs.com/cli/v8/configuring-npm/package-json#config) object can be used to set configuration parameters used in package scripts that persist across upgrades.
   #[serde(skip_serializing_if = "Option::is_none")]
-  pub config: Option<HashMap<String, String>>,
+  pub config: Option<HashMap<String, serde_json::Value>>,
   /// [Dependencies](https://docs.npmjs.com/cli/v8/configuring-npm/package-json#dependencies) are specified in a simple object that maps a package name to a version range. The version range is a string which has one or more space-separated descriptors. Dependencies can also be identified with a tarball or git URL.
   ///
   /// Please do not put test harnesses or transpilers or other "development" time tools in your dependencies object. See [devDependencies](PackageJson::dev_dependencies).
@@ -148,6 +148,7 @@ pub struct PackageJson {
 
 /// see [PackageJson::bugs](PackageJson::bugs)
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackageBugs {
   Url(String),
   Record(PackageBugsRecord),
@@ -156,11 +157,12 @@ pub enum PackageBugs {
 /// see [PackageJson::bugs](PackageJson::bugs)
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct PackageBugsRecord {
-  pub url: String,
-  pub email: String,
+  pub url: Option<String>,
+  pub email: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackagePeople {
   Literal(String),
   Record(PackagePeopleRecord),
@@ -175,6 +177,7 @@ pub struct PackagePeopleRecord {
 
 /// see [PackageJson::funding](PackageJson::funding)
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackageFunding {
   Url(String),
   Record(PackageFundingRecord),
@@ -190,6 +193,7 @@ pub struct PackageFundingRecord {
 
 /// see [PackageJson::bin](PackageJson::bin)
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackageBin {
   Literal(String),
   Record(HashMap<String, String>),
@@ -197,6 +201,7 @@ pub enum PackageBin {
 
 /// see [PackageJson::man](PackageJson::man)
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
 pub enum PackageMan {
   Literal(String),
   Slice(Vec<String>),
@@ -210,10 +215,18 @@ pub struct PackageDirectories {
 }
 
 /// see [PackageJson::repository](PackageJson::repository)
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum PackageRepository {
+  Url(String),
+  Record(PackageRepositoryRecord),
+}
+
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct PackageRepository {
+pub struct PackageRepositoryRecord {
   pub r#type: String,
   pub url: String,
+  pub directory: Option<String>,
 }
 
 pub type PackageDependencies = HashMap<String, String>;
@@ -265,8 +278,377 @@ fn test_unknown_fields() {
 
   let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
   assert_eq!(package_json.unknowns.len(), 2);
-  assert!(package_json.unknowns.get("foo").is_some());
-  assert!(package_json.unknowns.get("baz").is_some());
+  assert!(package_json.unknowns.contains_key("baz"));
+  assert!(package_json.unknowns.contains_key("baz"));
   assert_eq!(package_json.unknowns.get("foo").unwrap(), &"bar".to_owned());
   assert_eq!(package_json.unknowns.get("baz").unwrap(), &"qux".to_owned());
+}
+
+#[test]
+fn test_repository_string() {
+  let json = r#"
+  {
+    "name": "test",
+    "version": "1.0.0",
+    "description": "test",
+    "repository": "gitlab:user/repo"
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("gitlab:user/repo");
+  match package_json.repository.unwrap() {
+    PackageRepository::Url(url) => {
+      assert_eq!(url, expected, "expected {} got {}", expected, url);
+    }
+    PackageRepository::Record(_) => {
+      panic!("expected a repository url, got a struct")
+    }
+  }
+}
+
+#[test]
+fn test_repository_record() {
+  let json = r#"
+  {
+    "name": "test",
+    "version": "1.0.0",
+    "description": "test",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/npm/cli.git"
+      }
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("git+https://github.com/npm/cli.git");
+  match package_json.repository.unwrap() {
+    PackageRepository::Record(record) => {
+      assert_eq!(
+        record.url, expected,
+        "expected repository url {} got {}",
+        expected, record.url
+      );
+    }
+    PackageRepository::Url(_) => {
+      panic!("expected a repository structl, got a url")
+    }
+  }
+}
+
+#[test]
+fn test_repository_record_with_directory() {
+  let json = r#"
+  {
+    "name": "test",
+    "version": "1.0.0",
+    "description": "test",
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/npm/cli.git",
+      "directory": "workspaces/libnpmpublish"
+    }
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("workspaces/libnpmpublish");
+  match package_json.repository.unwrap() {
+    PackageRepository::Record(record) => {
+      let dir = record.directory.unwrap();
+      assert_eq!(
+        dir, expected,
+        "expected repository directory {} got {}",
+        expected, dir
+      );
+    }
+    PackageRepository::Url(_) => {
+      panic!("expected a repository struct, got a url")
+    }
+  }
+}
+
+#[test]
+fn test_author_string_serialization() {
+  let json = r#"
+ {
+	"name": "package-name",
+	"private": true,
+	"version": "1.0.0",
+	"description": "Something for everyone",
+	"author": "A string value",
+	"license": "Apache-2.0",
+	"workspaces": [
+		"packages/*"
+	]
+}"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("A string value");
+  match package_json.author.unwrap() {
+    PackagePeople::Record(_) => {
+      panic!("expected a auhor string, got a struct");
+    }
+    PackagePeople::Literal(literal) => {
+      assert_eq!(literal, expected, "expected {} got {}", expected, literal);
+    }
+  }
+}
+
+#[test]
+fn test_author_object_serialization() {
+  let json = r#"
+ {
+	"name": "package-name",
+	"private": true,
+	"version": "1.0.0",
+	"description": "Something for everyone",
+	"author": {
+    "name": "Barney Rubble",
+    "email": "b@rubble.com",
+    "url": "http://barnyrubble.tumblr.com/"
+  },
+	"license": "Apache-2.0",
+	"workspaces": [
+		"packages/*"
+	]
+}"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected = String::from("http://barnyrubble.tumblr.com/");
+  match package_json.author.unwrap() {
+    PackagePeople::Record(record) => {
+      let author_url = record.url.unwrap();
+      assert_eq!(
+        author_url, expected,
+        "expected author url: {} got: {}",
+        expected, author_url
+      );
+    }
+    PackagePeople::Literal(_) => {
+      panic!("expected a auhor struct, got a string")
+    }
+  }
+}
+
+#[test]
+fn test_config_with_bool_serialization() {
+  let json = r#"
+   {
+    "name": "package-name",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Something for everyone",
+    "author": {
+      "name": "Barney Rubble",
+      "email": "b@rubble.com",
+      "url": "http://barnyrubble.tumblr.com/"
+    },
+    "config": {
+      "foo": true
+    },
+    "license": "Apache-2.0",
+    "workspaces": [
+      "packages/*"
+    ]
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected: bool = true;
+  assert_eq!(package_json.config.unwrap().get("foo").unwrap(), &expected);
+}
+
+#[test]
+fn test_config_with_nested_serialization() {
+  let json = r#"
+   {
+    "name": "package-name",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Something for everyone",
+    "author": {
+      "name": "Barney Rubble",
+      "email": "b@rubble.com",
+      "url": "http://barnyrubble.tumblr.com/"
+    },
+    "config": {
+      "commitizen": {
+        "path": "cz-conventional-changelog"
+      }
+    },
+    "license": "Apache-2.0",
+    "workspaces": [
+      "packages/*"
+    ]
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected: String = String::from("cz-conventional-changelog");
+  assert_eq!(
+    package_json
+      .config
+      .unwrap()
+      .get("commitizen")
+      .unwrap()
+      .get("path")
+      .unwrap(),
+    &expected
+  );
+}
+
+#[test]
+fn test_bugs_with_nested_serialization() {
+  let json = r#"
+   {
+    "name": "package-name",
+    "private": true,
+    "version": "1.0.0",
+    "description": "Something for everyone",
+    "author": {
+      "name": "Barney Rubble",
+      "email": "b@rubble.com",
+      "url": "http://barnyrubble.tumblr.com/"
+    },
+    "bugs": {
+      "url": "https://github.com/jquery/esprima/issues"
+    }
+  }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  let expected: String = String::from("https://github.com/jquery/esprima/issues");
+  match package_json.bugs.unwrap() {
+    PackageBugs::Url(_url) => {
+      panic!("expected a repository url, got a struct")
+    }
+    PackageBugs::Record(record) => {
+      let url = record.url.unwrap();
+      assert_eq!(url, expected, "expected {} got {}", expected, url);
+    }
+  }
+}
+
+#[test]
+fn test_scripts_serialization() {
+  let json = r#"
+    {
+        "name": "my-project",
+        "version": "1.0.0",
+        "scripts": {
+            "start": "node index.js",
+            "test": "jest",
+            "build": "webpack --mode production",
+            "lint": "eslint ."
+        }
+    }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  assert_eq!(package_json.scripts.get("start").unwrap(), "node index.js");
+  assert_eq!(package_json.scripts.get("test").unwrap(), "jest");
+  assert_eq!(
+    package_json.scripts.get("build").unwrap(),
+    "webpack --mode production"
+  );
+  assert_eq!(package_json.scripts.get("lint").unwrap(), "eslint .");
+}
+
+#[test]
+fn test_dependencies_and_dev_dependencies() {
+  let json = r#"
+    {
+        "name": "my-library",
+        "version": "2.1.0",
+        "dependencies": {
+            "lodash": "^4.17.21",
+            "axios": "^0.21.1"
+        },
+        "devDependencies": {
+            "jest": "^27.0.6",
+            "typescript": "^4.3.5"
+        }
+    }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  assert_eq!(
+    package_json
+      .dependencies
+      .as_ref()
+      .unwrap()
+      .get("lodash")
+      .unwrap(),
+    "^4.17.21"
+  );
+  assert_eq!(
+    package_json
+      .dependencies
+      .as_ref()
+      .unwrap()
+      .get("axios")
+      .unwrap(),
+    "^0.21.1"
+  );
+  assert_eq!(
+    package_json
+      .dev_dependencies
+      .as_ref()
+      .unwrap()
+      .get("jest")
+      .unwrap(),
+    "^27.0.6"
+  );
+  assert_eq!(
+    package_json
+      .dev_dependencies
+      .as_ref()
+      .unwrap()
+      .get("typescript")
+      .unwrap(),
+    "^4.3.5"
+  );
+}
+
+#[test]
+fn test_engines_and_os() {
+  let json = r#"
+    {
+        "name": "node-specific-package",
+        "version": "1.2.3",
+        "engines": {
+            "node": ">=14.0.0",
+            "npm": ">=6.0.0"
+        },
+        "os": ["darwin", "linux"]
+    }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  assert_eq!(
+    package_json.engines.as_ref().unwrap().get("node").unwrap(),
+    ">=14.0.0"
+  );
+  assert_eq!(
+    package_json.engines.as_ref().unwrap().get("npm").unwrap(),
+    ">=6.0.0"
+  );
+  assert_eq!(
+    package_json.os.as_ref().unwrap(),
+    &vec!["darwin".to_string(), "linux".to_string()]
+  );
+}
+
+#[test]
+fn test_bin_and_man() {
+  let json = r#"
+    {
+        "name": "cli-tool",
+        "version": "3.0.1",
+        "bin": {
+            "my-cli": "./bin/cli.js"
+        },
+        "man": [
+            "./man/doc.1",
+            "./man/doc.2"
+        ]
+    }"#;
+  let package_json = serde_json::from_str::<PackageJson>(json).unwrap();
+  match &package_json.bin {
+    Some(PackageBin::Record(bin_map)) => {
+      assert_eq!(bin_map.get("my-cli").unwrap(), "./bin/cli.js");
+    }
+    _ => panic!("Expected bin to be a Record"),
+  }
+  match &package_json.man {
+    Some(PackageMan::Slice(man_vec)) => {
+      assert_eq!(
+        man_vec,
+        &vec!["./man/doc.1".to_string(), "./man/doc.2".to_string()]
+      );
+    }
+    _ => panic!("Expected man to be a Slice"),
+  }
 }
