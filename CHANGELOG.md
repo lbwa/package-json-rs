@@ -1,6 +1,10 @@
 # CHANGELOG
 
+# [0.5.0](https://github.com/lbwa/package-json-rs/compare/v0.4.0...v0.5.0) (2025-03-08)
 
+### Features
+
+* improve handling of a variety of schema changes ([9ada679](https://github.com/lbwa/package-json-rs/commit/9ada679837ed6a71f5571b9db14128ab53bf8a2b))
 
 # [0.4.0](https://github.com/lbwa/package-json-rs/compare/v0.3.0...v0.4.0) (2023-04-10)
 
