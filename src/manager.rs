@@ -1,7 +1,7 @@
+use crate::error::{Error, Result};
 use crate::fs;
 use crate::fs::write_options::WriteOptions;
 use crate::PackageJson;
-use anyhow::{format_err, Result};
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -100,12 +100,7 @@ impl PackageJsonManager {
           self.json = json;
         })
       })
-      .unwrap_or_else(|| {
-        Err(format_err!(
-          "Couldn't find an available {} file.",
-          PACKAGE_JSON_FILENAME
-        ))
-      })
+      .unwrap_or_else(|| Err(Error::MissingPackageJson(PACKAGE_JSON_FILENAME.to_string())))
   }
 
   ///
@@ -163,12 +158,7 @@ impl PackageJsonManager {
             .expect("self.write_options should not be None"),
         )
       })
-      .unwrap_or_else(|| {
-        Err(format_err!(
-          "Couldn't find an available {} file.",
-          PACKAGE_JSON_FILENAME
-        ))
-      })
+      .unwrap_or_else(|| Err(Error::MissingPackageJson(PACKAGE_JSON_FILENAME.to_string())))
   }
 
   /// Write the current `package.json` content to the specific `package.json` file.
