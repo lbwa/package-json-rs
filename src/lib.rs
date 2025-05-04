@@ -4,10 +4,9 @@
 //! ## How to locate the closest `package.json` file
 //!
 //! ```no_run
-//! use package_json::PackageJsonManager;
+//! use package_json::{error::Result, PackageJsonManager};
 //! use std::path::Path;
 //!
-//! # use anyhow::Result;
 //! # fn main() -> Result<()> {
 //! let mut manager = PackageJsonManager::new();
 //! // based on the current working directory
@@ -62,6 +61,7 @@
 //! ```
 //!
 
+pub mod error;
 mod fs;
 mod manager;
 mod schema;

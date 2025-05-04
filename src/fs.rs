@@ -1,7 +1,8 @@
-use anyhow::{format_err, Result};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+
+use crate::error::{Error, Result};
 
 use self::write_options::WriteOptions;
 
@@ -15,11 +16,10 @@ pub fn find_closest_file<P: AsRef<Path>>(filename: &str, current_dir: P) -> Resu
       return Ok(file_path);
     }
     if !current_dir.pop() {
-      return Err(format_err!(
-        "Couldn't find an available \"{}\" from {}.",
-        filename,
-        current_dir.display()
-      ));
+      return Err(Error::NotFound {
+        filename: filename.to_string(),
+        current_dir,
+      });
     }
   }
 }
@@ -32,12 +32,8 @@ where
   let mut file = File::open(file_path)?;
   let mut contents = String::new();
   file.read_to_string(&mut contents)?;
-  let serialized_json = serde_json::from_str(&contents);
 
-  match serialized_json {
-    Ok(json) => Ok(json),
-    Err(error) => Err(format_err!(error)),
-  }
+  Ok(serde_json::from_str(&contents)?)
 }
 
 pub fn write_json<Json, FilePath>(
@@ -53,15 +49,11 @@ where
     serde_json::to_string_pretty(&json)
   } else {
     serde_json::to_string(&json)
-  };
+  }?;
 
-  match package_json {
-    Ok(json_content) => {
-      File::create(file_path)?.write_all(json_content.as_bytes())?;
-      Ok(())
-    }
-    Err(error) => Err(format_err!(error)),
-  }
+  File::create(file_path)?.write_all(package_json.as_bytes())?;
+
+  Ok(())
 }
 
 #[test]
